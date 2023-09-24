@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { CustomTransformControls } from "./CustomTransformControls.ts";
 import GUI from "lil-gui";
 
 type View = {
@@ -19,6 +20,8 @@ let windowWidth: number;
 let windowHeight: number;
 let camera1Mesh: THREE.Mesh;
 let camera2Mesh: THREE.Mesh;
+let controls: CustomTransformControls;
+let controlTarget: THREE.Mesh | null;
 
 const ORIGIN = new THREE.Vector3(0, 0, 0);
 
@@ -86,15 +89,36 @@ const views: View[] = [
 const init = () => {
   const app = document.querySelector("#app") as HTMLDivElement;
 
-  views.forEach((view) => {
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(window.devicePixelRatio);
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  app.appendChild(renderer.domElement);
+
+  scene = new THREE.Scene();
+
+  views.forEach((view, idx) => {
     const camera = new THREE.PerspectiveCamera(view.fov, window.innerWidth / window.innerHeight, 0.1, 100);
     camera.position.fromArray(view.eye);
     camera.lookAt(ORIGIN);
 
     view.camera = camera;
+
+    if (idx === 0) {
+      controls = new CustomTransformControls(camera, renderer.domElement);
+      controls.addEventListener("change", () => {
+        if (controlTarget === camera1Mesh) {
+          camera1Position.x = controlTarget.position.x;
+          camera1Position.y = controlTarget.position.y;
+          camera1Position.z = controlTarget.position.z;
+        } else if (controlTarget === camera2Mesh) {
+          camera2Position.x = controlTarget.position.x;
+          camera2Position.y = controlTarget.position.y;
+          camera2Position.z = controlTarget.position.z;
+        }
+      });
+    }
   });
 
-  scene = new THREE.Scene();
   const light = new THREE.HemisphereLight(0xffffff, 3);
   light.position.set(0, 0, 1);
   scene.add(light);
@@ -131,25 +155,49 @@ const init = () => {
   camera2Mesh = new THREE.Mesh(cameraGeometry, camera2Material);
   scene.add(camera1Mesh, camera2Mesh);
 
-  renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.setSize(window.innerWidth, window.innerHeight);
-  app.appendChild(renderer.domElement);
+  controls.attach(camera2Mesh);
+  controlTarget = camera2Mesh;
+  scene.add(controls);
 
   const gui = new GUI();
+  gui.close();
   gui.add(mainCameraPosition, "z").max(50).min(20).step(1);
 
   const camera2Folder = gui.addFolder("Red Camera");
   const camera2PositionFolder = camera2Folder.addFolder("Position");
-  camera2PositionFolder.add(camera2Position, "x").max(10).min(-10).step(0.1);
-  camera2PositionFolder.add(camera2Position, "y").max(10).min(-10).step(0.1);
-  camera2PositionFolder.add(camera2Position, "z").max(10).min(-10).step(0.1);
+  camera2PositionFolder.add(camera2Position, "x").max(10).min(-10).step(0.1).listen();
+  camera2PositionFolder.add(camera2Position, "y").max(10).min(-10).step(0.1).listen();
+  camera2PositionFolder.add(camera2Position, "z").max(10).min(-10).step(0.1).listen();
 
   const camera1Folder = gui.addFolder("Green Camera");
   const camera1PositionFolder = camera1Folder.addFolder("Position");
-  camera1PositionFolder.add(camera1Position, "x").max(10).min(-10).step(0.1);
-  camera1PositionFolder.add(camera1Position, "y").max(10).min(-10).step(0.1);
-  camera1PositionFolder.add(camera1Position, "z").max(10).min(-10).step(0.1);
+  camera1PositionFolder.add(camera1Position, "x").max(10).min(-10).step(0.1).listen();
+  camera1PositionFolder.add(camera1Position, "y").max(10).min(-10).step(0.1).listen();
+  camera1PositionFolder.add(camera1Position, "z").max(10).min(-10).step(0.1).listen();
+
+  const handleKeyDown = (event: KeyboardEvent) => {
+    switch (event.key) {
+      case "Escape": {
+        controls.detach();
+        break;
+      }
+      case "1": {
+        controls.attach(camera2Mesh);
+        controlTarget = camera2Mesh;
+        break;
+      }
+      case "2": {
+        controls.attach(camera1Mesh);
+        controlTarget = camera1Mesh;
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  };
+
+  window.addEventListener("keydown", handleKeyDown);
 };
 
 const updateSize = () => {
