@@ -124,7 +124,7 @@ const init = () => {
   scene.add(light);
 
   const groundGeometry = new THREE.BoxGeometry(10, 0.1, 10);
-  const texture = new THREE.TextureLoader().load("favicon.png");
+  const texture = new THREE.TextureLoader().load("logo.png");
   const groundMaterial = new THREE.MeshBasicMaterial({
     color: new THREE.Color(0x7d7c7c),
     map: texture,
